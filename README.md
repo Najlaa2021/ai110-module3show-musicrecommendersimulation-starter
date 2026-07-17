@@ -2,32 +2,18 @@
 
 ## Project Summary
 
-In this project you will build and explain a small music recommender system.
-
-Your goal is to:
-
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
+This version of the music recommender simulation will model a simple content-based recommendation system that suggests songs by matching a user’s preferences to the musical attributes of each track. Instead of relying on the behavior of many other listeners, it uses song metadata such as genre, mood, energy, tempo, and acousticness to estimate how well a song fits a listener’s taste profile.
 
 ---
 
 ## How The System Works
 
-Explain your design in plain language.
+Real streaming platforms often combine many signals, such as likes, skips, playlists, and listening habits, to predict what a user will enjoy next. In this simulation, I am using a simpler content-based approach: each song is described by features like genre, mood, energy, tempo, valence, danceability, and acousticness, while the user profile stores the listener’s preferred genre, preferred mood, target energy level, and whether they tend to like acoustic songs. The recommender will score each song based on how closely its features match the user’s preferences and then rank the highest-scoring songs at the top.
 
-Some prompts to answer:
+### Features used in the simulation
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
-
-You can include a simple diagram or bullet list if helpful.
+- `Song` objects will use: genre, mood, energy, tempo_bpm, valence, danceability, acousticness, title, and artist
+- `UserProfile` objects will use: favorite_genre, favorite_mood, target_energy, and likes_acoustic
 
 ---
 
