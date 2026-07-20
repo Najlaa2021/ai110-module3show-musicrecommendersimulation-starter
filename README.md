@@ -14,6 +14,77 @@ Real streaming platforms often combine many signals, such as likes, skips, playl
 
 - `Song` objects will use: genre, mood, energy, tempo_bpm, valence, danceability, acousticness, title, and artist
 - `UserProfile` objects will use: favorite_genre, favorite_mood, target_energy, and likes_acoustic
+### Example User Profile
+
+```python
+{
+    "favorite_genre": "indie pop",
+    "favorite_mood": "happy",
+    "target_energy": 0.75,
+    "likes_acoustic": False
+}
+```
+
+This profile represents a listener who enjoys upbeat, energetic indie pop music with happy vibes, and prefers songs with electronic/produced sounds over acoustic arrangements.
+
+### Algorithm Recipe (Scoring Logic)
+
+The recommender uses a **weighted feature-matching approach** to score each song:
+
+1. **Genre Match**: +2.0 points if the song's genre matches the user's favorite genre
+2. **Mood Match**: +1.0 point if the song's mood matches the user's favorite mood
+3. **Energy Similarity**: Up to +1.0 points based on how close the song's energy is to the user's target energy
+   - Formula: `1.0 - abs(song_energy - target_energy)` (rewards closer matches)
+4. **Danceability Bonus**: +0.5 points if the song's danceability is high (>0.7) and user's energy target is high
+5. **Acousticness Penalty**: -0.5 points if `likes_acoustic` is False and the song's acousticness is high (>0.6)
+
+**Final Score**: Sum of all component scores (higher is better)
+
+**Ranking**: Songs are ranked by score in descending order; the top K songs are recommended.
+
+### Data Flow Diagram
+
+```
+┌─────────────────────┐
+│   User Preferences  │
+│  (favorite_genre,   │
+│   favorite_mood,    │
+│   target_energy)    │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────────────────────────┐
+│   Loop: For Each Song in Catalog        │
+│  ┌───────────────────────────────────┐  │
+│  │ Calculate Score Using Rules:      │  │
+│  │ - Genre match points              │  │
+│  │ - Mood match points               │  │
+│  │ - Energy similarity points        │  │
+│  │ - Danceability & acousticness adj │  │
+│  └───────────────────────────────────┘  │
+│   Store (Song, Score) pair              │
+└──────────┬──────────────────────────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Sort by Score      │
+│  (descending)       │
+└──────────┬──────────┘
+           │
+           ▼
+┌────────────────────────────┐
+│ Return Top K Recommendations│
+│ with explanations          │
+└────────────────────────────┘
+```
+
+### Potential Biases and Limitations
+
+- **Genre Bias**: The system heavily weights exact genre matches (+2.0 points), which means songs from adjacent genres (e.g., "indie pop" vs. "indie") may be unfairly penalized even if they fit the user's taste well.
+- **Limited Feature Space**: With only 10 song features, the system cannot understand lyrics, artist popularity, or temporal trends (e.g., "songs trending now").
+- **Mood Oversimplification**: A binary mood match (e.g., "happy" vs. "not happy") is coarse; songs with similar emotional tones but different mood labels may be missed.
+- **Acousticness Assumption**: The penalty for acoustic songs assumes all users with `likes_acoustic=False` want electronic music, but acoustic indie pop or acoustic R&B may still appeal to them.
+- **Catalog Size**: With only 18 songs, the recommender has limited diversity and may make recommendations based on the best available match rather than a truly good fit.
 
 ---
 
@@ -54,18 +125,50 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
+Running `python -m src.main` scores all 18 songs against each user profile and prints a ranked, explained list. Below is the output for the default **pop / happy / high-energy** profile:
 
 ```
-# e.g.:
-# User profile: genre=indie, mood=chill, energy=low
-# Recommendations:
-#   1. ...
-#   2. ...
-#   3. ...
+Loading songs from data/songs.csv...
+Loaded 18 songs.
+
+================================================================================
+🎵 Profile: High-Energy Pop Enthusiast
+================================================================================
+User Preferences:
+  Genre: pop
+  Mood: happy
+  Target Energy: 0.8
+  Likes Acoustic: False
+
+Top 5 Recommendations:
+
+1. Sunrise City by Neon Echo
+   Genre: pop | Mood: happy | Energy: 0.82
+   Score: 4.48
+   Reasons: genre match (+2.0); mood match (+1.0); energy similarity (0.98); danceability bonus (+0.5)
+
+2. Gym Hero by Max Pulse
+   Genre: pop | Mood: intense | Energy: 0.93
+   Score: 3.37
+   Reasons: genre match (+2.0); energy similarity (0.87); danceability bonus (+0.5)
+
+3. Rooftop Lights by Indigo Parade
+   Genre: indie pop | Mood: happy | Energy: 0.76
+   Score: 2.46
+   Reasons: mood match (+1.0); energy similarity (0.96); danceability bonus (+0.5)
+
+4. Golden Hour Drive by Arden West
+   Genre: hip-hop | Mood: confident | Energy: 0.81
+   Score: 1.49
+   Reasons: energy similarity (0.99); danceability bonus (+0.5)
+
+5. Night Drive Loop by Neon Echo
+   Genre: synthwave | Mood: moody | Energy: 0.75
+   Score: 1.45
+   Reasons: energy similarity (0.95); danceability bonus (+0.5)
 ```
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
+The top result (**Sunrise City**) is the only track that matches genre, mood, *and* the target energy, so it earns the highest score — exactly what we'd expect for this profile.
 
 ---
 
