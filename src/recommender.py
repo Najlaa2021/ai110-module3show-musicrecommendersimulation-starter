@@ -240,11 +240,16 @@ def score_song(user_prefs: Dict, song: Dict, mode=None) -> Tuple[float, List[str
     return (score, reasons)
 
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5,
-                    mode=None) -> List[Tuple[Dict, float, str]]:
+                    mode=None, diversity: bool = False,
+                    artist_penalty: float = 1.0,
+                    genre_penalty: float = 0.5) -> List[Tuple[Dict, float, str]]:
     """
     Scores all songs and returns the top k recommendations ranked by score.
 
-    `mode` selects a scoring strategy (see SCORING_MODES). Returns a list of
+    `mode` selects a scoring strategy (see SCORING_MODES). When `diversity` is
+    True, results are chosen greedily with a penalty applied to songs whose
+    artist or genre already appears higher in the list (Challenge 3), so the
+    top picks are less dominated by a single artist or genre. Returns a list of
     (song_dict, score, explanation_string) tuples.
     """
     scored_songs = []
@@ -252,11 +257,42 @@ def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5,
     # Score every song in the catalog under the chosen strategy
     for song in songs:
         score, reasons = score_song(user_prefs, song, mode=mode)
-        explanation = "; ".join(reasons)
-        scored_songs.append((song, score, explanation))
+        scored_songs.append((song, score, list(reasons)))
 
     # Sort by score in descending order (highest scores first)
     scored_songs.sort(key=lambda x: x[1], reverse=True)
 
-    # Return top k results
-    return scored_songs[:k]
+    if not diversity:
+        return [(song, score, "; ".join(reasons)) for song, score, reasons in scored_songs[:k]]
+
+    # Diversity-aware greedy selection (Challenge 3): repeatedly pick the
+    # highest *adjusted* song, subtracting a penalty for each already-chosen
+    # song that shares its artist or genre.
+    pool = scored_songs[:]
+    selected: List[Tuple[Dict, float, str]] = []
+    artist_counts: Dict[str, int] = {}
+    genre_counts: Dict[str, int] = {}
+
+    while pool and len(selected) < k:
+        best_i, best_adj, best_notes = None, None, []
+        for i, (song, base, _reasons) in enumerate(pool):
+            a_hits = artist_counts.get(str(song.get('artist', '')).lower(), 0)
+            g_hits = genre_counts.get(str(song.get('genre', '')).lower(), 0)
+            penalty = artist_penalty * a_hits + genre_penalty * g_hits
+            adjusted = base - penalty
+            if best_adj is None or adjusted > best_adj:
+                notes = []
+                if a_hits:
+                    notes.append(f"artist repeat (-{artist_penalty * a_hits:.2f})")
+                if g_hits:
+                    notes.append(f"genre repeat (-{genre_penalty * g_hits:.2f})")
+                best_i, best_adj, best_notes = i, adjusted, notes
+
+        song, base, reasons = pool.pop(best_i)
+        artist = str(song.get('artist', '')).lower()
+        genre = str(song.get('genre', '')).lower()
+        artist_counts[artist] = artist_counts.get(artist, 0) + 1
+        genre_counts[genre] = genre_counts.get(genre, 0) + 1
+        selected.append((song, best_adj, "; ".join(reasons + best_notes)))
+
+    return selected
