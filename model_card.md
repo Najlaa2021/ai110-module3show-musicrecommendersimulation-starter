@@ -2,20 +2,13 @@
 
 ## 1. Model Name  
 
-Give your model a short, descriptive name.  
-Example: **VibeFinder 1.0**  
+**VibeMatcher 1.0** — A content-based music recommender that matches songs to user preferences using weighted genre, mood, and energy similarity scoring.
 
 ---
 
 ## 2. Intended Use  
 
-Describe what your recommender is designed to do and who it is for. 
-
-Prompts:  
-
-- What kind of recommendations does it generate  
-- What assumptions does it make about the user  
-- Is this for real users or classroom exploration  
+VibeMatcher is designed as an educational simulation to demonstrate how music streaming platforms can recommend songs based on user preferences. It generates a ranked list of song suggestions personalized to a listener's favorite genre, mood, and desired energy level. The system assumes users have a single dominant "vibe" preference and that musical taste can be modeled primarily through three attributes: genre, mood, and energy. This is a classroom exploration tool, not a production recommender—it demonstrates the core logic of content-based filtering.
 
 ---
 
