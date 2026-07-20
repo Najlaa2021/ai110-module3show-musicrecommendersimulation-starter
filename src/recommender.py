@@ -18,6 +18,12 @@ class Song:
     valence: float
     danceability: float
     acousticness: float
+    # Advanced features (Challenge 1) — defaults keep existing callers/tests valid.
+    popularity: int = 50
+    release_decade: int = 2020
+    mood_tags: str = ""
+    language: str = "english"
+    instrumentalness: float = 0.0
 
 @dataclass
 class UserProfile:
@@ -29,6 +35,12 @@ class UserProfile:
     favorite_mood: str
     target_energy: float
     likes_acoustic: bool
+    # Advanced preferences (Challenge 1) — defaults keep existing callers/tests valid.
+    favorite_decade: Optional[int] = None
+    mood_tags: Optional[List[str]] = None
+    favorite_language: str = ""
+    likes_instrumental: Optional[bool] = None
+    popularity_pref: str = "any"  # "mainstream" | "niche" | "any"
 
 class Recommender:
     """
@@ -69,6 +81,13 @@ def load_songs(csv_path: str) -> List[Dict]:
                 row['valence'] = float(row['valence'])
                 row['danceability'] = float(row['danceability'])
                 row['acousticness'] = float(row['acousticness'])
+                # Advanced features (Challenge 1) — optional so older CSVs still load.
+                if 'popularity' in row:
+                    row['popularity'] = int(row['popularity'])
+                if 'release_decade' in row:
+                    row['release_decade'] = int(row['release_decade'])
+                if 'instrumentalness' in row:
+                    row['instrumentalness'] = float(row['instrumentalness'])
                 songs.append(row)
         print(f"Loaded {len(songs)} songs.")
     except FileNotFoundError:
@@ -119,7 +138,55 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     if not user_likes_acoustic and song_acousticness > 0.6:
         score -= 0.5
         reasons.append("acoustic penalty (-0.5)")
-    
+
+    # --- Advanced features (Challenge 1) ---------------------------------
+    # These are secondary signals: each is smaller than genre/mood so it
+    # refines ties rather than overriding the primary vibe.
+
+    # 6. Release-decade match: +0.75 if the song is from the user's favorite decade.
+    user_decade = user_prefs.get('favorite_decade')
+    if user_decade is not None and 'release_decade' in song:
+        if int(song.get('release_decade')) == int(user_decade):
+            score += 0.75
+            reasons.append(f"decade match {user_decade}s (+0.75)")
+
+    # 7. Detailed mood-tag overlap: +0.4 per shared tag, capped at +0.8.
+    user_tags = user_prefs.get('mood_tags') or []
+    if isinstance(user_tags, str):
+        user_tags = [t.strip() for t in user_tags.split('|') if t.strip()]
+    song_tags = [t.strip().lower() for t in str(song.get('mood_tags', '')).split('|') if t.strip()]
+    if user_tags and song_tags:
+        shared = [t for t in user_tags if t.lower() in song_tags]
+        if shared:
+            tag_score = min(0.8, 0.4 * len(shared))
+            score += tag_score
+            reasons.append(f"mood tags {shared} (+{tag_score:.2f})")
+
+    # 8. Language match: +0.5 if the song is in the user's preferred language.
+    user_language = (user_prefs.get('favorite_language') or '').lower()
+    if user_language and str(song.get('language', '')).lower() == user_language:
+        score += 0.5
+        reasons.append(f"language match ({user_language}) (+0.5)")
+
+    # 9. Instrumental preference: +/-0.3 for clearly instrumental tracks.
+    likes_instrumental = user_prefs.get('likes_instrumental')
+    song_instrumentalness = float(song.get('instrumentalness', 0) or 0)
+    if likes_instrumental is not None and song_instrumentalness > 0.5:
+        if likes_instrumental:
+            score += 0.3
+            reasons.append("instrumental bonus (+0.3)")
+        else:
+            score -= 0.3
+            reasons.append("instrumental penalty (-0.3)")
+
+    # 10. Popularity preference: up to +0.5 toward mainstream or niche taste.
+    popularity_pref = (user_prefs.get('popularity_pref') or 'any').lower()
+    if popularity_pref in ('mainstream', 'niche') and 'popularity' in song:
+        pop_norm = max(0.0, min(1.0, float(song.get('popularity', 50)) / 100.0))
+        pop_score = 0.5 * (pop_norm if popularity_pref == 'mainstream' else (1.0 - pop_norm))
+        score += pop_score
+        reasons.append(f"{popularity_pref} taste (+{pop_score:.2f})")
+
     return (score, reasons)
 
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
