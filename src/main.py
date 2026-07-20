@@ -61,6 +61,22 @@ def main() -> None:
         {
             "name": "Jazz/Relaxed Listener",
             "prefs": {"genre": "jazz", "mood": "relaxed", "energy": 0.4, "likes_acoustic": True}
+        },
+        # --- Adversarial / edge-case profiles (System Evaluation phase) ---
+        # Conflicting signals: wants intense rock energy but a peaceful, acoustic vibe.
+        {
+            "name": "Contradictory Vibe (high energy + peaceful + acoustic)",
+            "prefs": {"genre": "rock", "mood": "peaceful", "energy": 0.9, "likes_acoustic": True}
+        },
+        # Genre and mood do not exist in the catalog at all — tests graceful fallback.
+        {
+            "name": "Ghost Genre (metal/angry not in catalog)",
+            "prefs": {"genre": "metal", "mood": "angry", "energy": 0.95, "likes_acoustic": False}
+        },
+        # Claims to love acoustic yet demands near-maximum energy electronic.
+        {
+            "name": "Acoustic Raver (loves acoustic but wants max energy)",
+            "prefs": {"genre": "electronic", "mood": "dreamy", "energy": 0.98, "likes_acoustic": True}
         }
     ]
     
