@@ -12,8 +12,8 @@ Real streaming platforms often combine many signals, such as likes, skips, playl
 
 ### Features used in the simulation
 
-- `Song` objects will use: genre, mood, energy, tempo_bpm, valence, danceability, acousticness, title, and artist
-- `UserProfile` objects will use: favorite_genre, favorite_mood, target_energy, and likes_acoustic
+- `Song` objects use: genre, mood, energy, tempo_bpm, valence, danceability, acousticness, title, and artist — plus the advanced attributes added in the stretch challenges: `popularity`, `release_decade`, `mood_tags`, `language`, and `instrumentalness`.
+- `UserProfile` objects use: favorite_genre, favorite_mood, target_energy, and likes_acoustic — plus optional advanced preferences: `favorite_decade`, `mood_tags`, `favorite_language`, `likes_instrumental`, and `popularity_pref`.
 ### Example User Profile
 
 ```python
@@ -41,6 +41,23 @@ The recommender uses a **weighted feature-matching approach** to score each song
 **Final Score**: Sum of all component scores (higher is better)
 
 **Ranking**: Songs are ranked by score in descending order; the top K songs are recommended.
+
+### Advanced Features (Stretch Challenges)
+
+The recommender was extended beyond the baseline with four stretch features (see `ai_interactions.md` for the AI workflow behind each):
+
+1. **Advanced song attributes (Challenge 1).** Five new attributes now influence scoring, each kept smaller than genre/mood so they refine ties rather than override the primary vibe:
+   - Release-decade match: **+0.75** when the song's `release_decade` matches `favorite_decade`
+   - Detailed mood-tag overlap: **+0.4 per shared tag** (capped at +0.8)
+   - Language match: **+0.5** when `language` matches `favorite_language`
+   - Instrumental preference: **±0.3** for clearly instrumental tracks, based on `likes_instrumental`
+   - Popularity preference: **up to +0.5** toward `mainstream` or `niche` taste (`popularity_pref`)
+
+2. **Switchable scoring modes (Challenge 2) — Strategy pattern.** A `ScoringWeights` strategy object holds a multiplier per component, and `SCORING_MODES` provides presets: `balanced`, `genre-first`, `mood-first`, and `energy-focused`. Pass `mode=` to `score_song` / `recommend_songs`. One algorithm, interchangeable weight sets.
+
+3. **Diversity & fairness penalty (Challenge 3).** With `diversity=True`, `recommend_songs` selects the top-K greedily and subtracts a penalty from any candidate whose artist (**−1.0 each**) or genre (**−0.5 each**) already appears higher in the list, so no single artist or genre dominates. Applied penalties appear in each song's reasons.
+
+4. **Formatted summary table (Challenge 4).** The CLI prints a grid table (title, artist, genre, mood, energy, score, and reasons) using `tabulate` when installed, with a self-contained ASCII fallback so the app always runs.
 
 ### Data Flow Diagram
 
